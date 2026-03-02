@@ -1,4 +1,4 @@
-name: OWASP ZAP Scan + DefectDojo Upload
+name: OWASP ZAP Scan + DefectDojo Upload + Github Actions
 
 on:
   push:
