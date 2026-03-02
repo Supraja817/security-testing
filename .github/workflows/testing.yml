@@ -20,6 +20,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Fix Workspace Permissions
+        run: sudo chmod -R 777 ${{ github.workspace }}
+
       - name: Set Target URL
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -28,7 +31,10 @@ jobs:
             echo "TARGET=http://demo.testfire.net" >> $GITHUB_ENV
           fi
 
-      - name: Run OWASP ZAP Baseline Scan (Fast, XML only)
+      - name: Pull OWASP ZAP Docker Image
+        run: docker pull ghcr.io/zaproxy/zaproxy:stable
+
+      - name: Run OWASP ZAP Baseline Scan (XML Output)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/zap/wrk:rw \
@@ -36,9 +42,14 @@ jobs:
             zap-baseline.py \
             -t $TARGET \
             -x zap-report.xml \
-            -m 1 \
-            -z "-config spider.maxDuration=1 -config ajaxSpider.enabled=false" \
+            -r zap-report.html \
             || true
+
+      - name: Upload ZAP HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-html-report
+          path: zap-report.html
 
       - name: Upload ZAP XML Report
         uses: actions/upload-artifact@v4
