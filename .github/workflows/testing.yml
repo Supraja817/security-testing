@@ -1,0 +1,57 @@
+name: OWASP ZAP Scan + DefectDojo Upload
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Target URL to scan"
+        required: true
+        default: "http://demo.testfire.net"
+
+jobs:
+  zap_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Target URL
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TARGET=${{ github.event.inputs.target }}" >> $GITHUB_ENV
+          else
+            echo "TARGET=http://demo.testfire.net" >> $GITHUB_ENV
+
+      - name: Run OWASP ZAP Baseline Scan (Fast, XML only)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t $TARGET \
+            -x zap-report.xml \
+            -m 1 \
+            -z "-config spider.maxDuration=1 -config ajaxSpider.enabled=false" \
+            || true
+
+      - name: Upload ZAP XML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-xml-report
+          path: zap-report.xml
+
+      - name: Upload Results to DefectDojo
+        run: |
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
+            -F "scan_type=ZAP Scan" \
+            -F "file=@zap-report.xml" \
+            -F "product_name=${{ secrets.DD_PRODUCT_NAME }}" \
+            -F "engagement_name=${{ secrets.DD_ENGAGEMENT_NAME }}" \
+            -F "auto_create_context=true" \
+            -F "close_old_findings=true"
