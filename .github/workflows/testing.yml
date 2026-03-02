@@ -26,6 +26,7 @@ jobs:
             echo "TARGET=${{ github.event.inputs.target }}" >> $GITHUB_ENV
           else
             echo "TARGET=http://demo.testfire.net" >> $GITHUB_ENV
+          fi
 
       - name: Run OWASP ZAP Baseline Scan (Fast, XML only)
         run: |
